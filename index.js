@@ -50,64 +50,38 @@ async function dbConnection() {
     });
 
 
-
-    // ----> review section <---
+    /* ----> review section <--- */
 
     // create review
     app.post('/addReview', async (req, res) => {
       const data = req.body;
       const result = await AllReview.insertOne(data)
-      if (result.insertedId) {
-        res.send(result);
-      }
-      else {
-        res.send('no review add in DB');
-      }
+      result.insertedId ? res.send(result) : res.send('no review add in DB')
     });
 
-
-    // get all review
-    // app.get('/review', async (req, res) => {
-    //   const query = {};
-    //   const cursor = AllReview.find(query);
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
-
-
-    app.get('/review/:id', async (req, res) => { // get review by id
-      const id = (req.params.id);
-      const query = { serviceId: id }
-      const review = await AllReview.find(query).toArray();
-      res.send(review);
-    });
-
+    // git specific review by id
     app.get('/review', async (req, res) => {
       let query = {};
-
       if (req.query.id) {
         query = {
-          serviceId : req.query.id,
+          serviceId: req.query.id,
         }
       }
-      
-      const cursor = AllReview.find(query);
-      const result = await cursor.toArray();
+      const result = await AllReview.find(query).toArray();
       res.send(result);
     });
 
     // get review by email
-    // app.get('/reviewByEmail', async (req, res) => {
-    //   let query = {};
-    //   if (req.query.email) {
-    //     query = {
-    //       email: req.query.email
-    //     }
-    //   }
-    //   const result = await AllReview.find(query).toArray();
-    //   res.send(result)
-    // });
-
+    app.get('/reviewByEmail', async (req, res) => {
+      let query = {};
+      if (req.query.email) {
+        query = {
+          email: req.query.email
+        }
+      }
+      const result = await AllReview.find(query).toArray();
+      res.send(result)
+    });
   }
   finally {
 
