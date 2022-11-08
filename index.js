@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('colors')
 require('dotenv').config();
 
@@ -23,24 +23,90 @@ async function dbConnection() {
 
     const Services = client.db('kitogoo').collection('services');
     const Facilities = client.db('kitogoo').collection('facilities');
+    const AllReview = client.db('kitogoo').collection('allReview');
 
     // all services
     app.get('/services', async (req, res) => {
       const query = {};
-
       const allService = await Services.find(query).toArray();
       const serviceLimit = await Services.find(query).limit(3).toArray();
       const count = await Services.estimatedDocumentCount();
-
       res.send({ allService, serviceLimit, count });
     });
+
+    // single service
+    app.get('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await Services.findOne(query)
+      res.send(result);
+    })
 
     // all facilities
     app.get('/facilities', async (req, res) => {
       const query = {};
       const facility = await Facilities.find(query).toArray();
       res.send(facility);
-    })
+    });
+
+
+
+    // ----> review section <---
+
+    // create review
+    app.post('/addReview', async (req, res) => {
+      const data = req.body;
+      const result = await AllReview.insertOne(data)
+      if (result.insertedId) {
+        res.send(result);
+      }
+      else {
+        res.send('no review add in DB');
+      }
+    });
+
+
+    // get all review
+    // app.get('/review', async (req, res) => {
+    //   const query = {};
+    //   const cursor = AllReview.find(query);
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+
+
+    app.get('/review/:id', async (req, res) => { // get review by id
+      const id = (req.params.id);
+      const query = { serviceId: id }
+      const review = await AllReview.find(query).toArray();
+      res.send(review);
+    });
+
+    app.get('/review', async (req, res) => {
+      let query = {};
+
+      if (req.query.id) {
+        query = {
+          serviceId : req.query.id,
+        }
+      }
+      
+      const cursor = AllReview.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get review by email
+    // app.get('/reviewByEmail', async (req, res) => {
+    //   let query = {};
+    //   if (req.query.email) {
+    //     query = {
+    //       email: req.query.email
+    //     }
+    //   }
+    //   const result = await AllReview.find(query).toArray();
+    //   res.send(result)
+    // });
 
   }
   finally {
