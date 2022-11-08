@@ -25,6 +25,15 @@ async function dbConnection() {
     const Facilities = client.db('kitogoo').collection('facilities');
     const AllReview = client.db('kitogoo').collection('allReview');
 
+    /* ----> service section <--- */
+
+    // crete service
+    app.post('/service',async (req, res) => {
+      const service = req.body;
+      const result = await Services.insertOne(service);
+      res.send(result)
+    });
+
     // all services
     app.get('/services', async (req, res) => {
       const query = {};
