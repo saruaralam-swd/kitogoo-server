@@ -62,7 +62,7 @@ async function dbConnection() {
     // all & limit services
     app.get('/services', async (req, res) => {
       const query = {};
-      const allService = await servicesCollection.find(query).toArray();
+      const allService = await servicesCollection.find(query).sort({date: -1}).toArray();
       const serviceLimit = await servicesCollection.find(query).limit(3).toArray();
       const count = await servicesCollection.estimatedDocumentCount();
       res.send({ allService, serviceLimit, count });
