@@ -106,4 +106,8 @@ async function dbConnection() {
 
 dbConnection().catch(error => console.log(error.name, error.message));
 
+app.get('/', (req, res) => {
+  res.send('Kigogoo server is running');
+})
+
 app.listen(port, () => console.log(`server is running on port ${port}`.cyan.bold));
