@@ -4,7 +4,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 require('colors')
-
 const cors = require('cors');
 
 //middleware
@@ -19,18 +18,14 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 // token verify
 function verifyJWt(req, res, next) {
   const authHeader = req.headers.authorization;
-
   if (!authHeader) {
     return res.status(401).send({ message: 'unAuthorization access' })
   }
-
   const token = authHeader.split(' ')[1];
-
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
     if (err) {
       return res.status(403).send({ message: 'Forbidden access' })
     }
-
     req.decoded = decoded;
     next();
   })
@@ -39,6 +34,7 @@ function verifyJWt(req, res, next) {
 
 async function dbConnection() {
   try {
+    // for text : DB connection
     await client.connect()
     console.log('DB Connection done'.yellow.italic);
 
@@ -46,6 +42,7 @@ async function dbConnection() {
     const facilitiesCollection = client.db('kitogoo').collection('facilities');
     const allReviewCollection = client.db('kitogoo').collection('allReview');
 
+    // create json web token
     app.post('/jwt', (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "20d" });
@@ -62,7 +59,7 @@ async function dbConnection() {
       res.send(result)
     });
 
-    // all services
+    // all & limit services
     app.get('/services', async (req, res) => {
       const query = {};
       const allService = await servicesCollection.find(query).toArray();
@@ -71,7 +68,7 @@ async function dbConnection() {
       res.send({ allService, serviceLimit, count });
     });
 
-    // single service
+    // specific service
     app.get('/services/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -126,10 +123,33 @@ async function dbConnection() {
       res.send(result)
     });
 
+    // review delete
     app.delete('/review/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) }
       const result = await allReviewCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    // get specific review for update
+    app.get('/reviewEdit/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await allReviewCollection.findOne(query);
+      res.send(result)
+    })
+
+    // review update 
+    app.patch('/review/:id', async (req, res) => {
+      const id = req.params.id;
+      const newMessage = req.body.message;
+      const query = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          message: newMessage,
+        }
+      }
+      const result = await allReviewCollection.updateOne(query, updateDoc);
       res.send(result)
     })
   }
