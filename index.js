@@ -1,8 +1,9 @@
 const express = require('express');
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-require('colors')
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
+require('colors')
 
 const cors = require('cors');
 
@@ -12,34 +13,61 @@ app.use(express.json());
 
 const port = process.env.PORT || 5000;
 
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.0269g6x.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+// token verify
+function verifyJWt(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).send({ message: 'unAuthorization access' })
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: 'Forbidden access' })
+    }
+
+    req.decoded = decoded;
+    next();
+  })
+}
+
 
 async function dbConnection() {
   try {
     await client.connect()
     console.log('DB Connection done'.yellow.italic);
 
-    const Services = client.db('kitogoo').collection('services');
-    const Facilities = client.db('kitogoo').collection('facilities');
-    const AllReview = client.db('kitogoo').collection('allReview');
+    const servicesCollection = client.db('kitogoo').collection('services');
+    const facilitiesCollection = client.db('kitogoo').collection('facilities');
+    const allReviewCollection = client.db('kitogoo').collection('allReview');
+
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "20d" });
+      res.send({ token })
+    })
+
 
     /* ----> service section <--- */
 
     // crete service
-    app.post('/service',async (req, res) => {
+    app.post('/service', async (req, res) => {
       const service = req.body;
-      const result = await Services.insertOne(service);
+      const result = await servicesCollection.insertOne(service);
       res.send(result)
     });
 
     // all services
     app.get('/services', async (req, res) => {
       const query = {};
-      const allService = await Services.find(query).toArray();
-      const serviceLimit = await Services.find(query).limit(3).toArray();
-      const count = await Services.estimatedDocumentCount();
+      const allService = await servicesCollection.find(query).toArray();
+      const serviceLimit = await servicesCollection.find(query).limit(3).toArray();
+      const count = await servicesCollection.estimatedDocumentCount();
       res.send({ allService, serviceLimit, count });
     });
 
@@ -47,14 +75,14 @@ async function dbConnection() {
     app.get('/services/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
-      const result = await Services.findOne(query)
+      const result = await servicesCollection.findOne(query)
       res.send(result);
     })
 
     // all facilities
     app.get('/facilities', async (req, res) => {
       const query = {};
-      const facility = await Facilities.find(query).toArray();
+      const facility = await facilitiesCollection.find(query).toArray();
       res.send(facility);
     });
 
@@ -64,7 +92,7 @@ async function dbConnection() {
     // create review
     app.post('/addReview', async (req, res) => {
       const data = req.body;
-      const result = await AllReview.insertOne(data)
+      const result = await allReviewCollection.insertOne(data)
       result.insertedId ? res.send(result) : res.send('no review add in DB')
     });
 
@@ -76,26 +104,32 @@ async function dbConnection() {
           serviceId: req.query.id,
         }
       }
-      const result = await AllReview.find(query).toArray();
+      const result = await allReviewCollection.find(query).toArray();
       res.send(result);
     });
 
     // get review by email
-    app.get('/reviewByEmail', async (req, res) => {
+    app.get('/getReviewByEmail', verifyJWt, async (req, res) => {
+      const decode = req.decoded;
+
+      if (decode.email !== req.query.email) {
+        return res.status(403).send({ message: 'unauthorized access' })
+      }
+
       let query = {};
       if (req.query.email) {
         query = {
           email: req.query.email
         }
       }
-      const result = await AllReview.find(query).toArray();
+      const result = await allReviewCollection.find(query).toArray();
       res.send(result)
     });
 
     app.delete('/review/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) }
-      const result = await AllReview.deleteOne(query)
+      const result = await allReviewCollection.deleteOne(query)
       res.send(result)
     })
   }
@@ -108,6 +142,6 @@ dbConnection().catch(error => console.log(error.name, error.message));
 
 app.get('/', (req, res) => {
   res.send('Kigogoo server is running');
-})
+});
 
 app.listen(port, () => console.log(`server is running on port ${port}`.cyan.bold));
