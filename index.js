@@ -32,133 +32,134 @@ function verifyJWt(req, res, next) {
 }
 
 
-async function dbConnection() {
+async function run() {
   try {
-    // for text : DB connection
     await client.connect()
-    console.log('DB Connection done'.yellow.italic);
-
-    const servicesCollection = client.db('kitogoo').collection('services');
-    const facilitiesCollection = client.db('kitogoo').collection('facilities');
-    const allReviewCollection = client.db('kitogoo').collection('allReview');
-
-    // create json web token
-    app.post('/jwt', (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "20d" });
-      res.send({ token })
-    })
-
-
-    /* ----> service section <--- */
-
-    // crete service
-    app.post('/service', async (req, res) => {
-      const service = req.body;
-      const result = await servicesCollection.insertOne(service);
-      res.send(result)
-    });
-
-    // all & limit services
-    app.get('/services', async (req, res) => {
-      const query = {};
-      const allService = await servicesCollection.find(query).sort({date: -1}).toArray();
-      const serviceLimit = await servicesCollection.find(query).sort({date: -1}).limit(3).toArray();
-      const count = await servicesCollection.estimatedDocumentCount();
-      res.send({ allService, serviceLimit, count });
-    });
-
-    // specific service
-    app.get('/services/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) };
-      const result = await servicesCollection.findOne(query)
-      res.send(result);
-    });
-
-    // all facilities
-    app.get('/facilities', async (req, res) => {
-      const query = {};
-      const facility = await facilitiesCollection.find(query).toArray();
-      res.send(facility);
-    });
-
-
-    /* ----> review section <--- */
-
-    // create review
-    app.post('/addReview', async (req, res) => {
-      const data = req.body;
-      const result = await allReviewCollection.insertOne(data)
-      result.insertedId ? res.send(result) : res.send('no review add in DB')
-    });
-
-    // git specific review by id
-    app.get('/review', async (req, res) => {
-      let query = {};
-      if (req.query.id) {
-        query = {
-          serviceId: req.query.id,
-        }
-      }
-      const result = await allReviewCollection.find(query).toArray();
-      res.send(result);
-    });
-
-    // get review by email
-    app.get('/getReviewByEmail', verifyJWt, async (req, res) => {
-      const decode = req.decoded;
-
-      if (decode.email !== req.query.email) {
-        return res.status(403).send({ message: 'you are not valid user', code: 404 })
-      }
-
-      let query = {};
-      if (req.query.email) {
-        query = {
-          email: req.query.email
-        }
-      }
-      const result = await allReviewCollection.find(query).toArray();
-      res.send(result)
-    });
-
-    // review delete
-    app.delete('/review/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) }
-      const result = await allReviewCollection.deleteOne(query)
-      res.send(result)
-    })
-
-    // get specific review for update
-    app.get('/reviewEdit/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) };
-      const result = await allReviewCollection.findOne(query);
-      res.send(result)
-    })
-
-    // review update 
-    app.patch('/review/:id', async (req, res) => {
-      const id = req.params.id;
-      const newMessage = req.body.message;
-      const query = { _id: ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          message: newMessage,
-        }
-      }
-      const result = await allReviewCollection.updateOne(query, updateDoc);
-      res.send(result)
-    })
+    console.log('DB connected'.yellow.italic)
   }
   finally {
 
   }
-};
+}
 
-dbConnection().catch(error => console.log(error.name, error.message));
+run().catch(error => console.log(error.name, error.message));
+
+
+// collection
+const servicesCollection = client.db('kitogoo').collection('services');
+const facilitiesCollection = client.db('kitogoo').collection('facilities');
+const allReviewCollection = client.db('kitogoo').collection('allReview');
+
+
+// create json web token
+app.post('/jwt', (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "20d" });
+  res.send({ token })
+})
+
+
+/* ----> service section <--- */
+// crete service
+app.post('/service', async (req, res) => {
+  const service = req.body;
+  const result = await servicesCollection.insertOne(service);
+  res.send(result)
+});
+
+// all & limit services
+app.get('/services', async (req, res) => {
+  const query = {};
+  const allService = await servicesCollection.find(query).sort({ date: -1 }).toArray();
+  const serviceLimit = await servicesCollection.find(query).sort({ date: -1 }).limit(3).toArray();
+  const count = await servicesCollection.estimatedDocumentCount();
+  res.send({ allService, serviceLimit, count });
+});
+
+// specific service
+app.get('/services/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: ObjectId(id) };
+  const result = await servicesCollection.findOne(query)
+  res.send(result);
+});
+
+// all facilities
+app.get('/facilities', async (req, res) => {
+  const query = {};
+  const facility = await facilitiesCollection.find(query).toArray();
+  res.send(facility);
+});
+
+
+
+/* ----> review section <--- */
+// create review
+app.post('/addReview', async (req, res) => {
+  const data = req.body;
+  const result = await allReviewCollection.insertOne(data)
+  result.insertedId ? res.send(result) : res.send('no review add in DB')
+});
+
+// git specific review by id
+app.get('/review', async (req, res) => {
+  let query = {};
+  if (req.query.id) {
+    query = {
+      serviceId: req.query.id,
+    }
+  }
+  const result = await allReviewCollection.find(query).toArray();
+  res.send(result);
+});
+
+// get review by email
+app.get('/getReviewByEmail', verifyJWt, async (req, res) => {
+  const decode = req.decoded;
+
+  if (decode.email !== req.query.email) {
+    return res.status(403).send({ message: 'you are not valid user', code: 404 })
+  }
+
+  let query = {};
+  if (req.query.email) {
+    query = {
+      email: req.query.email
+    }
+  }
+  const result = await allReviewCollection.find(query).toArray();
+  res.send(result)
+});
+
+// review delete
+app.delete('/review/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: ObjectId(id) }
+  const result = await allReviewCollection.deleteOne(query)
+  res.send(result)
+})
+
+// get specific review for update
+app.get('/reviewEdit/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: ObjectId(id) };
+  const result = await allReviewCollection.findOne(query);
+  res.send(result)
+})
+
+// review update 
+app.patch('/review/:id', async (req, res) => {
+  const id = req.params.id;
+  const newMessage = req.body.message;
+  const query = { _id: ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      message: newMessage,
+    }
+  }
+  const result = await allReviewCollection.updateOne(query, updateDoc);
+  res.send(result)
+})
 
 app.get('/', (req, res) => {
   res.send('Kitogoo server is running');
