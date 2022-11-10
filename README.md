@@ -1,0 +1,5 @@
+- Database use: (MongoDb)
+- CRUD(Create, Read, Update, Delete) operation add
+- create JWT (json web token) and send user for next time get data
+- only valid user can get data form database using server
+- i am use some package: (cors, dotenv, express, mongoDb, jsonwebtoken)
