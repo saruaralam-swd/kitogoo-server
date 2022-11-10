@@ -19,12 +19,12 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 function verifyJWt(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).send({ message: 'unAuthorization access' })
+    return res.status(401).send({ message: 'unAuthorization access', code: 404 })
   }
   const token = authHeader.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
     if (err) {
-      return res.status(403).send({ message: 'Forbidden access' })
+      return res.status(403).send({ message: 'Forbidden access', code: 404 })
     }
     req.decoded = decoded;
     next();
@@ -63,7 +63,7 @@ async function dbConnection() {
     app.get('/services', async (req, res) => {
       const query = {};
       const allService = await servicesCollection.find(query).sort({date: -1}).toArray();
-      const serviceLimit = await servicesCollection.find(query).limit(3).toArray();
+      const serviceLimit = await servicesCollection.find(query).sort({date: -1}).limit(3).toArray();
       const count = await servicesCollection.estimatedDocumentCount();
       res.send({ allService, serviceLimit, count });
     });
@@ -74,7 +74,7 @@ async function dbConnection() {
       const query = { _id: ObjectId(id) };
       const result = await servicesCollection.findOne(query)
       res.send(result);
-    })
+    });
 
     // all facilities
     app.get('/facilities', async (req, res) => {
@@ -110,7 +110,7 @@ async function dbConnection() {
       const decode = req.decoded;
 
       if (decode.email !== req.query.email) {
-        return res.status(403).send({ message: 'unauthorized access' })
+        return res.status(403).send({ message: 'you are not valid user', code: 404 })
       }
 
       let query = {};
